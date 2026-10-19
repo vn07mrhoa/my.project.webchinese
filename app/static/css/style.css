@@ -1,0 +1,106 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Noto+Serif+SC:wght@400;600;700;900&family=ZCOOL+XiaoWei&display=swap');
+
+:root {
+  --primary: #e53e3e;
+  --primary-hover: #c53030;
+  --primary-light: #fff5f5;
+  --tian-color: #fca5a5;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: #f8fafc;
+  color: #1e293b;
+}
+
+.font-chinese {
+  font-family: 'Noto Serif SC', 'ZCOOL XiaoWei', serif;
+}
+
+/* Tian Zi Ge (Khung chữ điền / mễ tự cách) */
+.tian-grid {
+  position: relative;
+  border: 3px solid #ef4444;
+  background-color: #fffaf0;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px -4px rgba(239, 68, 68, 0.15);
+  overflow: hidden;
+}
+
+.tian-grid::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 0;
+  height: 100%;
+  border-left: 1.5px dashed #fca5a5;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.tian-grid::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 0;
+  border-top: 1.5px dashed #fca5a5;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.tian-grid-diagonal {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: 
+    linear-gradient(to top right, transparent calc(50% - 1px), #fed7aa, transparent calc(50% + 1px)),
+    linear-gradient(to bottom right, transparent calc(50% - 1px), #fed7aa, transparent calc(50% + 1px));
+}
+
+/* 3D Flip Card Effect */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Pulse animation for playing audio */
+@keyframes audioPulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.pulse-audio {
+  animation: audioPulse 0.6s infinite ease-in-out;
+}

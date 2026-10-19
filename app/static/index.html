@@ -1,0 +1,1463 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hanzii Web - Từ điển & Học tiếng Trung thông minh</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Hanzi Writer for Stroke Order -->
+  <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+  <!-- Vue 3 -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800 flex flex-col">
+  <div id="app" class="flex flex-col min-h-screen">
+    
+    <!-- Top Navigation Bar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          
+          <!-- Logo -->
+          <div class="flex items-center space-x-3 cursor-pointer" @click="activeTab = 'search'">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-red-600 to-rose-500 flex items-center justify-center text-white shadow-md shadow-red-200 font-chinese text-2xl font-black">
+              汉
+            </div>
+            <div>
+              <div class="flex items-center space-x-1.5">
+                <span class="text-xl font-bold tracking-tight text-slate-900">Hanzii</span>
+                <span class="px-1.5 py-0.5 text-[10px] font-bold uppercase bg-red-100 text-red-600 rounded">AI</span>
+              </div>
+              <p class="text-[11px] text-slate-500 font-medium hidden sm:block">Từ điển & Học tiếng Trung thông minh</p>
+            </div>
+          </div>
+
+          <!-- Navigation Links -->
+          <nav class="flex items-center space-x-1 sm:space-x-2">
+            <button 
+              @click="activeTab = 'search'" 
+              :class="activeTab === 'search' ? 'bg-red-50 text-red-600 font-semibold border-red-200' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-transparent'"
+              class="px-3 py-2 rounded-lg text-sm transition-all border flex items-center space-x-2">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <span class="hidden md:inline">Tra từ điển</span>
+            </button>
+
+            <button 
+              @click="activeTab = 'topics'; loadTopics()" 
+              :class="activeTab === 'topics' ? 'bg-red-50 text-red-600 font-semibold border-red-200' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-transparent'"
+              class="px-3 py-2 rounded-lg text-sm transition-all border flex items-center space-x-2">
+              <i class="fa-solid fa-book-open"></i>
+              <span class="hidden md:inline">Học theo chủ đề</span>
+            </button>
+
+            <button 
+              @click="activeTab = 'stroke'" 
+              :class="activeTab === 'stroke' ? 'bg-red-50 text-red-600 font-semibold border-red-200' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-transparent'"
+              class="px-3 py-2 rounded-lg text-sm transition-all border flex items-center space-x-2">
+              <i class="fa-solid fa-pen-nib"></i>
+              <span class="hidden md:inline">Luyện viết</span>
+            </button>
+
+            <button 
+              @click="activeTab = 'review'; loadFlashcards()" 
+              :class="activeTab === 'review' ? 'bg-red-50 text-red-600 font-semibold border-red-200' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-transparent'"
+              class="px-3 py-2 rounded-lg text-sm transition-all border flex items-center space-x-2 relative">
+              <i class="fa-solid fa-layer-group"></i>
+              <span class="hidden md:inline">Ôn tập Flashcard</span>
+              <span v-if="dueCardsCount > 0" class="w-2 h-2 rounded-full bg-red-500 absolute top-1.5 right-1.5"></span>
+            </button>
+
+            <button 
+              @click="activeTab = 'quiz'; loadQuizzes()" 
+              :class="activeTab === 'quiz' ? 'bg-red-50 text-red-600 font-semibold border-red-200' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-transparent'"
+              class="px-3 py-2 rounded-lg text-sm transition-all border flex items-center space-x-2">
+              <i class="fa-solid fa-clipboard-question"></i>
+              <span class="hidden md:inline">Làm bài tập</span>
+            </button>
+
+            <button 
+              @click="activeTab = 'notebook'; loadNotebook()" 
+              :class="activeTab === 'notebook' ? 'bg-red-50 text-red-600 font-semibold border-red-200' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-transparent'"
+              class="px-3 py-2 rounded-lg text-sm transition-all border flex items-center space-x-2">
+              <i class="fa-solid fa-book-bookmark"></i>
+              <span class="hidden md:inline">Sổ tay</span>
+              <span v-if="stats.notebook_count > 0" class="text-xs bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded-full font-bold ml-1">
+                {{ stats.notebook_count }}
+              </span>
+            </button>
+          </nav>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+      <!-- ================= TAB 1: TRA TỪ ĐIỂN ================= -->
+      <section v-if="activeTab === 'search'" class="space-y-6">
+        
+        <!-- Search Hero Box -->
+        <div class="bg-gradient-to-br from-red-600 via-rose-600 to-amber-600 rounded-3xl p-6 sm:p-10 text-white shadow-xl shadow-red-500/10 relative overflow-hidden">
+          <div class="relative z-10 max-w-3xl">
+            <h1 class="text-2xl sm:text-4xl font-extrabold tracking-tight mb-2">
+              Tra cứu từ điển tiếng Trung chuẩn Hanzii
+            </h1>
+            <p class="text-red-100 text-sm sm:text-base mb-6">
+              Tra bằng chữ Hán, Pinyin, âm Hán Việt hoặc tiếng Việt. Xem thứ tự nét viết, ví dụ thực tế và giải nghĩa chuẩn xác.
+            </p>
+
+            <!-- Search Form -->
+            <div class="relative flex items-center bg-white rounded-2xl shadow-2xl p-2 text-slate-800">
+              <div class="pl-3 text-slate-400">
+                <i class="fa-solid fa-magnifying-glass text-lg text-red-500"></i>
+              </div>
+              <input 
+                type="text" 
+                v-model="searchQuery" 
+                @input="handleSearchInput"
+                @keyup.enter="performSearch"
+                placeholder="Nhập chữ Hán, Pinyin (xuexi), Hán Việt (học tập) hoặc tiếng Việt..."
+                class="w-full px-4 py-2.5 sm:py-3 text-base sm:text-lg bg-transparent border-0 focus:outline-none focus:ring-0 placeholder:text-slate-400"
+              />
+              <button 
+                v-if="searchQuery" 
+                @click="searchQuery = ''; searchResults = []"
+                class="p-2 text-slate-400 hover:text-slate-600 text-sm">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+              <button 
+                @click="performSearch"
+                class="bg-red-600 hover:bg-red-700 text-white px-5 sm:px-7 py-2.5 sm:py-3 rounded-xl font-semibold text-sm sm:text-base transition-all shadow-md shadow-red-200">
+                Tra từ
+              </button>
+            </div>
+
+            <!-- Quick Suggestions -->
+            <div class="mt-4 flex flex-wrap items-center gap-2 text-xs sm:text-sm text-red-100">
+              <span class="font-medium text-white/90">Gợi ý từ hay:</span>
+              <button 
+                v-for="word in ['你好', '学习', '老师', '朋友', '准备', '打算', '解决', '坚持']" 
+                :key="word"
+                @click="searchQuery = word; performSearch()"
+                class="px-2.5 py-1 bg-white/15 hover:bg-white/30 backdrop-blur-sm rounded-lg transition-all font-chinese">
+                {{ word }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search Results List -->
+        <div v-if="searchResults.length > 0 && !selectedWord" class="space-y-3">
+          <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Kết quả tìm kiếm ({{ searchResults.length }})</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div 
+              v-for="item in searchResults" 
+              :key="item.id"
+              @click="selectWord(item)"
+              class="bg-white p-5 rounded-2xl border border-slate-200 hover:border-red-300 hover:shadow-lg transition-all cursor-pointer group flex flex-col justify-between">
+              <div>
+                <div class="flex items-start justify-between">
+                  <div class="flex items-baseline space-x-3">
+                    <span class="font-chinese text-3xl font-bold text-slate-900 group-hover:text-red-600 transition-colors">
+                      {{ item.simplified }}
+                    </span>
+                    <span class="text-red-600 font-semibold text-base">{{ item.pinyin }}</span>
+                  </div>
+                  <span class="text-xs px-2 py-0.5 rounded font-bold uppercase"
+                        :class="hskBadgeClass(item.hsk_level)">
+                    HSK {{ item.hsk_level }}
+                  </span>
+                </div>
+                <div class="mt-2 text-xs font-semibold text-amber-700 bg-amber-50 inline-block px-2 py-0.5 rounded">
+                  Âm Hán Việt: {{ item.hanviet }}
+                </div>
+                <p class="mt-2.5 text-sm text-slate-600 line-clamp-2">{{ item.meaning }}</p>
+              </div>
+              <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+                <span>Bộ: {{ item.radical || '—' }} ({{ item.stroke_count }} nét)</span>
+                <span class="text-red-600 font-semibold group-hover:translate-x-1 transition-transform inline-flex items-center">
+                  Xem chi tiết <i class="fa-solid fa-chevron-right ml-1 text-[10px]"></i>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Detailed Word View -->
+        <div v-if="selectedWord" class="space-y-6 animate-fade-in">
+          
+          <!-- Back button -->
+          <div class="flex items-center justify-between">
+            <button 
+              @click="selectedWord = null" 
+              class="text-sm font-medium text-slate-500 hover:text-slate-800 flex items-center space-x-2">
+              <i class="fa-solid fa-arrow-left"></i>
+              <span>Quay lại danh sách</span>
+            </button>
+            <div class="flex items-center space-x-2">
+              <button 
+                @click="toggleNotebook(selectedWord)"
+                class="px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center space-x-2"
+                :class="selectedWord.is_favorited ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'">
+                <i :class="selectedWord.is_favorited ? 'fa-solid fa-star text-amber-500' : 'fa-regular fa-star'"></i>
+                <span>{{ selectedWord.is_favorited ? 'Đã lưu trong sổ tay' : 'Lưu vào sổ tay' }}</span>
+              </button>
+              <button 
+                @click="openStrokeTab(selectedWord.simplified)"
+                class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-medium transition-all shadow-md shadow-red-200 flex items-center space-x-2">
+                <i class="fa-solid fa-pen-nib"></i>
+                <span>Luyện viết chữ này</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Main Word Card -->
+          <div class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              
+              <!-- Left: Word Display & Audio -->
+              <div class="lg:col-span-1 flex flex-col items-center justify-center p-6 bg-gradient-to-b from-red-50/50 to-orange-50/30 rounded-2xl border border-red-100 text-center">
+                <div class="font-chinese text-7xl sm:text-8xl font-black text-slate-900 tracking-wide mb-3 select-none">
+                  {{ selectedWord.simplified }}
+                </div>
+                <div v-if="selectedWord.traditional && selectedWord.traditional !== selectedWord.simplified" class="text-xs text-slate-400 mb-2 font-chinese">
+                  Phồn thể: <span class="font-semibold text-slate-600">{{ selectedWord.traditional }}</span>
+                </div>
+                <div class="flex items-center space-x-3 mb-4">
+                  <span class="text-2xl font-bold text-red-600">{{ selectedWord.pinyin }}</span>
+                  <button 
+                    @click="speak(selectedWord.simplified)" 
+                    class="w-10 h-10 rounded-full bg-red-600 text-white flex items-center justify-center shadow-md shadow-red-300 hover:scale-110 active:scale-95 transition-all"
+                    title="Nghe phát âm chuẩn">
+                    <i class="fa-solid fa-volume-high"></i>
+                  </button>
+                </div>
+                <div class="flex flex-wrap items-center justify-center gap-2">
+                  <span class="px-2.5 py-1 rounded-md text-xs font-bold uppercase" :class="hskBadgeClass(selectedWord.hsk_level)">
+                    HSK {{ selectedWord.hsk_level }}
+                  </span>
+                  <span class="px-2.5 py-1 rounded-md text-xs font-bold bg-amber-100 text-amber-800">
+                    Âm Hán Việt: {{ selectedWord.hanviet }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Right: Detailed Meanings, Radicals, Examples -->
+              <div class="lg:col-span-2 space-y-6">
+                <!-- Radical & Stroke Details -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                    <span class="text-[11px] font-semibold text-slate-400 uppercase block">Bộ thủ</span>
+                    <span class="font-medium text-slate-800 text-sm">{{ selectedWord.radical || 'Đang cập nhật' }}</span>
+                  </div>
+                  <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                    <span class="text-[11px] font-semibold text-slate-400 uppercase block">Tổng số nét</span>
+                    <span class="font-medium text-slate-800 text-sm">{{ selectedWord.stroke_count }} nét</span>
+                  </div>
+                  <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-100 col-span-2 sm:col-span-1">
+                    <span class="text-[11px] font-semibold text-slate-400 uppercase block">Từ loại</span>
+                    <span class="font-medium text-slate-800 text-sm">{{ selectedWord.part_of_speech || 'Từ vựng' }}</span>
+                  </div>
+                </div>
+
+                <!-- Meaning -->
+                <div>
+                  <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400 mb-2">Định nghĩa & Giải thích</h3>
+                  <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-base font-medium text-slate-800 leading-relaxed">
+                    {{ selectedWord.meaning }}
+                  </div>
+                </div>
+
+                <!-- Examples -->
+                <div v-if="selectedWord.examples && selectedWord.examples.length > 0">
+                  <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400 mb-2">Ví dụ song ngữ minh họa</h3>
+                  <div class="space-y-3">
+                    <div 
+                      v-for="(ex, idx) in selectedWord.examples" 
+                      :key="idx"
+                      class="p-4 rounded-2xl bg-white border border-slate-200 hover:border-red-200 transition-all flex items-start justify-between group">
+                      <div class="space-y-1">
+                        <div class="flex items-center space-x-2">
+                          <span class="font-chinese text-lg font-bold text-slate-900">{{ ex.zh }}</span>
+                        </div>
+                        <div class="text-xs text-red-600 font-semibold">{{ ex.pinyin }}</div>
+                        <div class="text-sm text-slate-600">{{ ex.vi }}</div>
+                      </div>
+                      <button 
+                        @click="speak(ex.zh)"
+                        class="text-slate-400 hover:text-red-600 p-2 transition-colors"
+                        title="Nghe câu này">
+                        <i class="fa-solid fa-volume-high text-sm"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- HSK Quick Categories -->
+        <div v-if="!selectedWord && searchResults.length === 0" class="space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-bold text-slate-900">Khám phá từ vựng theo cấp độ HSK</h2>
+            <span class="text-xs text-slate-400">Chọn cấp độ để xem từ</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <button 
+              v-for="lvl in 6" 
+              :key="lvl"
+              @click="loadHskWords(lvl)"
+              :class="activeHskTab === lvl ? 'ring-2 ring-red-600 bg-red-50 text-red-700' : 'bg-white hover:bg-slate-50 text-slate-700'"
+              class="p-4 rounded-2xl border border-slate-200 text-center transition-all shadow-sm">
+              <div class="text-xs font-semibold text-slate-400 uppercase mb-1">Cấp độ</div>
+              <div class="text-xl font-extrabold">HSK {{ lvl }}</div>
+            </button>
+          </div>
+
+          <!-- Words from selected HSK -->
+          <div v-if="hskWords.length > 0" class="mt-6 space-y-3">
+            <h3 class="text-sm font-semibold uppercase tracking-wider text-slate-400">
+              Từ vựng HSK {{ activeHskTab }} ({{ hskWords.length }} từ)
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div 
+                v-for="item in hskWords" 
+                :key="item.id"
+                @click="selectWord(item)"
+                class="bg-white p-4 rounded-2xl border border-slate-200 hover:border-red-300 hover:shadow-md transition-all cursor-pointer group flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                  <span class="font-chinese text-2xl font-bold text-slate-900 group-hover:text-red-600">{{ item.simplified }}</span>
+                  <div>
+                    <div class="text-sm font-semibold text-red-600">{{ item.pinyin }}</div>
+                    <div class="text-xs text-slate-500 line-clamp-1">{{ item.meaning }}</div>
+                  </div>
+                </div>
+                <span class="text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded font-medium">{{ item.hanviet }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ================= TAB: HỌC THEO CHỦ ĐỀ (TOPICS) ================= -->
+      <section v-if="activeTab === 'topics'" class="space-y-6">
+        
+        <!-- Header / Banner -->
+        <div v-if="!selectedTopic" class="bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 rounded-3xl p-6 sm:p-8 text-white shadow-lg shadow-red-500/10">
+          <div class="max-w-3xl">
+            <div class="inline-flex items-center space-x-2 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-semibold mb-3">
+              <i class="fa-solid fa-graduation-cap"></i>
+              <span>Giáo trình chuẩn Hán ngữ sơ cấp</span>
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2">
+              Học Tiếng Trung Theo Từng Bài & Chủ Đề
+            </h1>
+            <p class="text-red-100 text-sm sm:text-base">
+              Lộ trình bài bản giúp bạn làm chủ từ vựng, hội thoại giao tiếp thực tế, ngữ pháp then chốt và bài tập củng cố sau mỗi bài học.
+            </p>
+          </div>
+        </div>
+
+        <!-- Topic List (Phong cách thẻ bài giống giao diện mẫu của bạn) -->
+        <div v-if="!selectedTopic" class="space-y-3.5">
+          <div 
+            v-for="topic in topics" 
+            :key="topic.id"
+            class="bg-white rounded-2xl border border-slate-200 hover:border-red-300 hover:shadow-md transition-all overflow-hidden">
+            
+            <!-- Main Lesson Row -->
+            <div 
+              @click="openTopic(topic)"
+              class="p-4 sm:p-5 flex items-center justify-between cursor-pointer group">
+              
+              <!-- Left: Icon & Title -->
+              <div class="flex items-center space-x-3.5 sm:space-x-4">
+                <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-rose-50 border border-rose-200 text-rose-500 flex items-center justify-center text-lg sm:text-xl group-hover:bg-red-600 group-hover:text-white transition-all shadow-sm">
+                  <i class="fa-regular fa-clipboard-check"></i>
+                </div>
+                <div>
+                  <h3 class="text-base sm:text-lg font-bold text-amber-600 group-hover:text-red-600 transition-colors">
+                    {{ topic.title }}
+                  </h3>
+                  <p class="text-xs text-slate-500 mt-0.5 hidden sm:block">{{ topic.description }}</p>
+                </div>
+              </div>
+
+              <!-- Right: Status / Info -->
+              <div class="flex items-center space-x-3">
+                <div v-if="!topic.is_locked" class="hidden md:flex items-center space-x-2 text-xs text-slate-400">
+                  <span class="bg-slate-100 text-slate-700 px-2 py-1 rounded-md font-medium">
+                    <i class="fa-solid fa-font text-slate-400 mr-1"></i> {{ topic.vocab_count }} từ mới
+                  </span>
+                  <span class="bg-slate-100 text-slate-700 px-2 py-1 rounded-md font-medium">
+                    <i class="fa-regular fa-comments text-slate-400 mr-1"></i> {{ topic.dialogue_count }} câu thoại
+                  </span>
+                </div>
+
+                <div v-if="!topic.is_locked" class="px-3.5 py-1.5 bg-red-50 text-red-600 rounded-xl text-xs sm:text-sm font-semibold group-hover:bg-red-600 group-hover:text-white transition-all flex items-center space-x-1">
+                  <span>Vào học</span>
+                  <i class="fa-solid fa-chevron-right text-xs"></i>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Locked Bar (Dành cho các bài chưa đăng ký như ảnh mẫu của bạn) -->
+            <div v-if="topic.is_locked" class="bg-slate-50/80 border-t border-slate-100 px-5 py-2.5 flex items-center justify-between text-xs text-slate-600">
+              <div class="flex items-center space-x-2 text-slate-500">
+                <i class="fa-solid fa-lock text-slate-400"></i>
+                <span class="font-medium">Bạn chưa đăng ký !</span>
+              </div>
+              <button 
+                @click.stop="unlockTopic(topic)"
+                class="px-3 py-1 bg-white hover:bg-slate-100 text-red-600 border border-slate-200 rounded-lg font-semibold transition-all shadow-2xs flex items-center space-x-1">
+                <i class="fa-solid fa-unlock-keyhole text-[10px]"></i>
+                <span>Mở khóa học thử</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Detailed Topic Study View (Khi người dùng chọn vào 1 bài học) -->
+        <div v-if="selectedTopic" class="space-y-6 animate-fade-in">
+          
+          <!-- Back & Topic Header -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
+            <div class="flex items-center space-x-3">
+              <button 
+                @click="selectedTopic = null"
+                class="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-all shadow-2xs">
+                <i class="fa-solid fa-arrow-left"></i>
+              </button>
+              <div>
+                <div class="flex items-center space-x-2">
+                  <span class="text-xs px-2 py-0.5 rounded font-bold uppercase bg-red-100 text-red-700">
+                    {{ selectedTopic.category || 'Hán ngữ' }}
+                  </span>
+                  <span class="text-xs text-slate-400">Cấp độ HSK {{ selectedTopic.level }}</span>
+                </div>
+                <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900 mt-0.5">
+                  {{ selectedTopic.title }}
+                </h2>
+              </div>
+            </div>
+
+            <!-- Sub Navigation Tabs inside Lesson -->
+            <div class="flex items-center space-x-1 bg-white p-1 rounded-2xl border border-slate-200 shadow-2xs">
+              <button 
+                @click="topicSubTab = 'vocab'"
+                :class="topicSubTab === 'vocab' ? 'bg-red-600 text-white font-semibold' : 'text-slate-600 hover:text-slate-900'"
+                class="px-3 py-1.5 rounded-xl text-xs sm:text-sm transition-all flex items-center space-x-1.5">
+                <i class="fa-solid fa-font"></i>
+                <span>Từ vựng ({{ selectedTopic.vocabularies.length }})</span>
+              </button>
+              <button 
+                @click="topicSubTab = 'dialogue'"
+                :class="topicSubTab === 'dialogue' ? 'bg-red-600 text-white font-semibold' : 'text-slate-600 hover:text-slate-900'"
+                class="px-3 py-1.5 rounded-xl text-xs sm:text-sm transition-all flex items-center space-x-1.5">
+                <i class="fa-regular fa-comments"></i>
+                <span>Hội thoại</span>
+              </button>
+              <button 
+                @click="topicSubTab = 'grammar'"
+                :class="topicSubTab === 'grammar' ? 'bg-red-600 text-white font-semibold' : 'text-slate-600 hover:text-slate-900'"
+                class="px-3 py-1.5 rounded-xl text-xs sm:text-sm transition-all flex items-center space-x-1.5">
+                <i class="fa-solid fa-book"></i>
+                <span>Ngữ pháp</span>
+              </button>
+              <button 
+                @click="topicSubTab = 'quiz'"
+                :class="topicSubTab === 'quiz' ? 'bg-red-600 text-white font-semibold' : 'text-slate-600 hover:text-slate-900'"
+                class="px-3 py-1.5 rounded-xl text-xs sm:text-sm transition-all flex items-center space-x-1.5">
+                <i class="fa-solid fa-clipboard-check"></i>
+                <span>Bài tập</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- SUB-TAB 1: TỪ VỰNG CỦA BÀI (生词) -->
+          <div v-if="topicSubTab === 'vocab'" class="space-y-8">
+            
+            <!-- KHU VỰC 1: CÁC TỪ MỚI THƯỜNG DÙNG XẾP RIÊNG BIỆT ĐẦU TIÊN -->
+            <div v-if="frequentVocabs.length > 0" class="space-y-4 bg-gradient-to-br from-amber-50/80 via-rose-50/40 to-white p-6 rounded-3xl border-2 border-amber-200/80 shadow-sm">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/60 pb-3">
+                <div class="flex items-center space-x-2.5">
+                  <span class="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center text-sm shadow-sm font-bold">
+                    <i class="fa-solid fa-star"></i>
+                  </span>
+                  <div>
+                    <h3 class="text-base sm:text-lg font-extrabold text-amber-900">
+                      Từ Mới Trọng Tâm Thường Dùng (Xếp riêng biệt)
+                    </h3>
+                    <p class="text-xs text-amber-700/80">Những từ xuất hiện với tần suất cao nhất, cốt lõi cần ghi nhớ trước</p>
+                  </div>
+                </div>
+                <span class="text-xs font-bold text-amber-800 bg-amber-100 px-3 py-1 rounded-full w-fit">
+                  {{ frequentVocabs.length }} từ cốt lõi
+                </span>
+              </div>
+
+              <!-- Grid từ thường dùng -->
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div 
+                  v-for="(v, fIdx) in frequentVocabs" 
+                  :key="'freq-' + fIdx"
+                  class="bg-white p-5 rounded-2xl border-2 border-amber-200 hover:border-red-400 hover:shadow-lg transition-all flex flex-col justify-between space-y-3 relative group">
+                  
+                  <div class="absolute top-3 right-3">
+                    <span class="text-[10px] uppercase font-extrabold bg-amber-500 text-white px-2 py-0.5 rounded-full shadow-2xs">
+                      ⭐ Hay dùng
+                    </span>
+                  </div>
+
+                  <div>
+                    <div class="flex items-start justify-between pr-16">
+                      <div>
+                        <span class="font-chinese text-3xl font-black text-slate-900 group-hover:text-red-600 transition-colors block">
+                          {{ v.simplified }}
+                        </span>
+                        <span class="text-red-600 font-bold text-sm">{{ v.pinyin }}</span>
+                      </div>
+                    </div>
+                    <div class="mt-1.5 text-xs text-amber-800 bg-amber-50 px-2 py-0.5 rounded font-semibold inline-block">
+                      Âm Hán Việt: {{ v.hanviet }}
+                    </div>
+                    <p class="mt-2 text-sm text-slate-800 font-semibold">{{ v.meaning }}</p>
+                    <p v-if="v.example" class="mt-1.5 text-xs text-slate-500 font-chinese bg-slate-50 p-2 rounded-xl border border-slate-100">
+                      {{ v.example }}
+                    </p>
+                  </div>
+
+                  <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <button 
+                      @click="speak(v.simplified)"
+                      class="p-2 text-slate-600 hover:text-red-600 transition-colors flex items-center space-x-1.5 text-xs font-semibold">
+                      <i class="fa-solid fa-volume-high text-sm"></i>
+                      <span>Nghe</span>
+                    </button>
+                    <div class="flex items-center space-x-2">
+                      <button 
+                        @click="openStrokeTab(v.simplified)"
+                        class="px-2.5 py-1 text-xs bg-red-50 hover:bg-red-600 hover:text-white text-red-600 rounded-lg font-semibold transition-all flex items-center space-x-1">
+                        <i class="fa-solid fa-pen-nib"></i>
+                        <span>Luyện viết</span>
+                      </button>
+                      <button 
+                        @click="quickSaveNotebook(v)"
+                        class="px-2.5 py-1 text-xs bg-slate-100 hover:bg-amber-100 hover:text-amber-700 text-slate-700 rounded-lg font-medium transition-all"
+                        title="Lưu vào sổ tay">
+                        <i class="fa-regular fa-star"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- KHU VỰC 2: TẤT CẢ TỪ MỚI CỦA BÀI (XẾP ĐẦY ĐỦ NHƯ CŨ, GIỮ NGUYÊN TOÀN BỘ) -->
+            <div class="space-y-4 pt-2">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
+                <div>
+                  <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center space-x-2">
+                    <span>Toàn Bộ Danh Sách Từ Mới Của Bài</span>
+                    <span class="text-xs bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-full">
+                      Đầy đủ {{ selectedTopic.vocabularies.length }} từ
+                    </span>
+                  </h3>
+                  <p class="text-xs text-slate-500 mt-0.5">Bao gồm toàn bộ từ trọng tâm và từ mở rộng theo trình tự bài học</p>
+                </div>
+                <span class="text-xs text-slate-400">Bấm loa nghe phát âm, bấm cây bút để tập viết</span>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div 
+                  v-for="(v, vIdx) in selectedTopic.vocabularies" 
+                  :key="'all-' + vIdx"
+                  class="bg-white p-5 rounded-2xl border border-slate-200 hover:border-red-300 hover:shadow-md transition-all flex flex-col justify-between space-y-3">
+                  <div>
+                    <div class="flex items-start justify-between">
+                      <div>
+                        <span class="font-chinese text-3xl font-bold text-slate-900 block">{{ v.simplified }}</span>
+                        <span class="text-red-600 font-semibold text-sm">{{ v.pinyin }}</span>
+                      </div>
+                      <div class="flex flex-col items-end space-y-1">
+                        <span class="text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded font-semibold">
+                          {{ v.hanviet }}
+                        </span>
+                        <span v-if="v.is_frequent" class="text-[9px] font-bold text-amber-600 bg-amber-50/80 px-1.5 py-0.2 rounded border border-amber-200">
+                          Thường dùng
+                        </span>
+                      </div>
+                    </div>
+                    <p class="mt-2 text-sm text-slate-700 font-medium">{{ v.meaning }}</p>
+                    <p v-if="v.example" class="mt-1 text-xs text-slate-400 font-chinese">{{ v.example }}</p>
+                  </div>
+
+                  <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <button 
+                      @click="speak(v.simplified)"
+                      class="p-2 text-slate-500 hover:text-red-600 transition-colors flex items-center space-x-1 text-xs font-medium">
+                      <i class="fa-solid fa-volume-high"></i>
+                      <span>Nghe</span>
+                    </button>
+                    <div class="flex items-center space-x-2">
+                      <button 
+                        @click="openStrokeTab(v.simplified)"
+                        class="px-2.5 py-1 text-xs bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-medium transition-all flex items-center space-x-1">
+                        <i class="fa-solid fa-pen-nib"></i>
+                        <span>Luyện viết</span>
+                      </button>
+                      <button 
+                        @click="quickSaveNotebook(v)"
+                        class="px-2.5 py-1 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium transition-all"
+                        title="Lưu vào sổ tay">
+                        <i class="fa-regular fa-star"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- SUB-TAB 2: HỘI THOẠI THỰC TẾ (课文) -->
+          <div v-if="topicSubTab === 'dialogue'" class="space-y-4">
+            <div class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
+              <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div>
+                  <h3 class="text-lg font-bold text-slate-900">Bài hội thoại giao tiếp</h3>
+                  <p class="text-xs text-slate-500 mt-0.5">Luyện phản xạ và ngữ điệu giao tiếp chuẩn xác</p>
+                </div>
+                <button 
+                  @click="playFullDialogue"
+                  class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-sm transition-all flex items-center space-x-2">
+                  <i class="fa-solid fa-play"></i>
+                  <span>Nghe toàn bài</span>
+                </button>
+              </div>
+
+              <!-- Dialogue chat list -->
+              <div class="space-y-4 max-w-2xl mx-auto">
+                <div 
+                  v-for="(dlg, dIdx) in selectedTopic.dialogues" 
+                  :key="dIdx"
+                  class="flex items-start space-x-3"
+                  :class="dlg.speaker === 'A' ? 'flex-row' : 'flex-row-reverse space-x-reverse'">
+                  
+                  <!-- Speaker Avatar -->
+                  <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0"
+                       :class="dlg.speaker === 'A' ? 'bg-red-600 text-white' : 'bg-amber-600 text-white'">
+                    {{ dlg.speaker }}
+                  </div>
+
+                  <!-- Dialogue Bubble -->
+                  <div class="p-4 rounded-2xl max-w-md shadow-2xs border transition-all"
+                       :class="dlg.speaker === 'A' ? 'bg-red-50/70 border-red-100 text-slate-900 rounded-tl-sm' : 'bg-slate-50 border-slate-200 text-slate-900 rounded-tr-sm'">
+                    <div class="flex items-center justify-between space-x-3 mb-1">
+                      <span class="font-chinese text-lg font-bold">{{ dlg.zh }}</span>
+                      <button 
+                        @click="speak(dlg.zh)"
+                        class="text-slate-400 hover:text-red-600 transition-colors p-1"
+                        title="Nghe câu này">
+                        <i class="fa-solid fa-volume-high text-xs"></i>
+                      </button>
+                    </div>
+                    <div class="text-xs text-red-600 font-semibold">{{ dlg.pinyin }}</div>
+                    <div class="text-xs text-slate-600 mt-1 font-medium">{{ dlg.vi }}</div>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- SUB-TAB 3: ĐIỂM NGỮ PHÁP (语法) -->
+          <div v-if="topicSubTab === 'grammar'" class="space-y-4">
+            <div class="space-y-4">
+              <div 
+                v-for="(gm, gIdx) in selectedTopic.grammar" 
+                :key="gIdx"
+                class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-3">
+                <div class="flex items-center space-x-2 text-red-600 font-bold text-base sm:text-lg">
+                  <i class="fa-solid fa-lightbulb"></i>
+                  <span>{{ gm.title }}</span>
+                </div>
+                <p class="text-sm text-slate-700 leading-relaxed">{{ gm.explanation }}</p>
+                <div v-if="gm.example" class="mt-3 p-4 bg-slate-50 rounded-2xl border border-slate-100 text-sm font-medium">
+                  <span class="text-xs text-slate-400 font-semibold uppercase block mb-1">Ví dụ minh họa:</span>
+                  <span class="font-chinese text-slate-900">{{ gm.example }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SUB-TAB 4: BÀI TẬP CỦNG CỐ CỦA BÀI HỌC (练习) -->
+          <div v-if="topicSubTab === 'quiz'" class="space-y-4">
+            <div v-if="selectedTopic.quizzes && selectedTopic.quizzes.length > 0" class="max-w-2xl mx-auto space-y-6">
+              <div 
+                v-for="(qz, qIdx) in selectedTopic.quizzes" 
+                :key="qIdx"
+                class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-4">
+                <div class="text-xs font-bold uppercase tracking-wider text-red-600 bg-red-50 px-2.5 py-1 rounded-full inline-block">
+                  Câu hỏi {{ qIdx + 1 }}
+                </div>
+                <h4 class="text-lg font-bold text-slate-900">{{ qz.question }}</h4>
+
+                <div class="space-y-2.5">
+                  <button 
+                    v-for="(opt, optIdx) in qz.options" 
+                    :key="optIdx"
+                    @click="answerTopicQuiz(qIdx, optIdx, qz.correct_index)"
+                    :disabled="topicQuizAnswers[qIdx] !== undefined"
+                    class="w-full p-3.5 rounded-xl border text-left font-medium transition-all flex items-center justify-between text-sm"
+                    :class="getTopicQuizOptClass(qIdx, optIdx, qz.correct_index)">
+                    <div class="flex items-center space-x-3">
+                      <span class="w-6 h-6 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600">
+                        {{ ['A', 'B', 'C', 'D'][optIdx] }}
+                      </span>
+                      <span>{{ opt }}</span>
+                    </div>
+                    <div v-if="topicQuizAnswers[qIdx] !== undefined">
+                      <i v-if="optIdx === qz.correct_index" class="fa-solid fa-circle-check text-emerald-600"></i>
+                      <i v-else-if="optIdx === topicQuizAnswers[qIdx]" class="fa-solid fa-circle-xmark text-red-600"></i>
+                    </div>
+                  </button>
+                </div>
+
+                <div v-if="topicQuizAnswers[qIdx] !== undefined" class="p-3.5 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-700 mt-2">
+                  <span class="font-bold text-slate-900 block mb-0.5">Giải thích:</span>
+                  {{ qz.explanation }}
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-center py-12 bg-white rounded-3xl border border-slate-200 p-6">
+              <p class="text-sm text-slate-500">Bài học này chưa có câu hỏi trắc nghiệm.</p>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- ================= TAB 2: LUYỆN VIẾT CHỮ HÁN ================= -->
+      <section v-if="activeTab === 'stroke'" class="space-y-6">
+        <div class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm">
+          
+          <!-- Header controls -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-6">
+            <div>
+              <h2 class="text-2xl font-extrabold text-slate-900 flex items-center space-x-2">
+                <span>Luyện viết chữ Hán (Thứ tự nét viết)</span>
+                <span class="text-xs bg-red-100 text-red-600 font-bold px-2 py-0.5 rounded-full uppercase">Interactive</span>
+              </h2>
+              <p class="text-sm text-slate-500 mt-1">Mô phỏng bút thuận theo chuẩn TianZiGe và chế độ tự tập viết chấm điểm thông minh</p>
+            </div>
+            
+            <!-- Character Input -->
+            <div class="flex items-center space-x-2">
+              <input 
+                type="text" 
+                v-model="strokeInput" 
+                @keyup.enter="initStrokeWriter"
+                placeholder="Nhập chữ Hán..."
+                maxlength="6"
+                class="w-36 px-3 py-2 border border-slate-200 rounded-xl text-center text-lg font-chinese font-bold focus:outline-none focus:border-red-500"
+              />
+              <button 
+                @click="initStrokeWriter"
+                class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl text-sm transition-all shadow-sm">
+                Tải chữ
+              </button>
+            </div>
+          </div>
+
+          <!-- Multiple Characters Selector Tabs -->
+          <div v-if="strokeCharacters.length > 1" class="flex items-center space-x-2 pt-4">
+            <span class="text-xs text-slate-400 font-semibold uppercase">Chọn chữ luyện:</span>
+            <button 
+              v-for="(char, idx) in strokeCharacters" 
+              :key="idx"
+              @click="selectCharForStroke(char)"
+              :class="currentChar === char ? 'bg-red-600 text-white font-bold' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+              class="w-10 h-10 rounded-xl text-lg font-chinese transition-all flex items-center justify-center">
+              {{ char }}
+            </button>
+          </div>
+
+          <!-- Main Writing Area -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center pt-6">
+            
+            <!-- Tian Zi Ge Canvas Box -->
+            <div class="lg:col-span-6 flex flex-col items-center">
+              <div class="relative tian-grid p-2 w-[280px] h-[280px] sm:w-[320px] sm:h-[320px] flex items-center justify-center">
+                <div class="tian-grid-diagonal"></div>
+                <!-- Target container for HanziWriter SVG -->
+                <div id="character-target" class="relative z-10 w-full h-full flex items-center justify-center"></div>
+              </div>
+              
+              <!-- Quiz Status / Feedback Message -->
+              <div class="mt-4 text-center h-8">
+                <span v-if="strokeFeedback" class="text-sm font-semibold px-4 py-1.5 rounded-full"
+                      :class="strokeFeedbackSuccess ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'">
+                  {{ strokeFeedback }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Controls & Information Panel -->
+            <div class="lg:col-span-6 space-y-6">
+              
+              <!-- Action Buttons -->
+              <div class="space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                  <button 
+                    @click="animateStroke"
+                    class="p-3.5 bg-red-50 hover:bg-red-100 text-red-700 font-semibold rounded-xl text-sm transition-all flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-play"></i>
+                    <span>Xem nét vẽ mẫu</span>
+                  </button>
+
+                  <button 
+                    @click="startQuizWriting"
+                    class="p-3.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl text-sm transition-all shadow-md shadow-red-200 flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-pen"></i>
+                    <span>Tự tập viết (Chấm điểm)</span>
+                  </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <button 
+                    @click="resetWriter"
+                    class="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl text-xs transition-all flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-arrow-rotate-left"></i>
+                    <span>Làm mới khung vẽ</span>
+                  </button>
+
+                  <button 
+                    @click="toggleOutline"
+                    class="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl text-xs transition-all flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-eye"></i>
+                    <span>{{ showOutline ? 'Ẩn đường nét mờ' : 'Hiện đường nét mờ' }}</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Pronounce & Audio button -->
+              <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center justify-between">
+                <div>
+                  <span class="text-xs text-slate-400 font-medium block">Phát âm chữ này:</span>
+                  <span class="text-lg font-bold text-slate-900 font-chinese">{{ currentChar }}</span>
+                </div>
+                <button 
+                  @click="speak(currentChar)"
+                  class="w-10 h-10 rounded-xl bg-white border border-slate-200 text-red-600 hover:bg-red-50 flex items-center justify-center shadow-sm transition-all">
+                  <i class="fa-solid fa-volume-high"></i>
+                </button>
+              </div>
+
+              <!-- Stroke Writing Instructions & Tips -->
+              <div class="bg-amber-50/70 border border-amber-200/60 rounded-2xl p-4 text-xs text-amber-900 space-y-1.5">
+                <div class="font-bold flex items-center space-x-1.5 text-amber-800">
+                  <i class="fa-solid fa-lightbulb"></i>
+                  <span>Quy tắc bút thuận tiếng Trung:</span>
+                </div>
+                <ul class="list-disc list-inside space-y-1 pl-1 text-slate-700">
+                  <li>Ngang trước sổ sau (一 trước 丨)</li>
+                  <li>Phẩy trước mác sau (丿 trước ㇏)</li>
+                  <li>Trên trước dưới sau, trái trước phải sau</li>
+                  <li>Ngoài trước trong sau, vào trước đóng sau</li>
+                  <li>Giữa trước hai bên sau (với các chữ đối xứng)</li>
+                </ul>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ================= TAB 3: ÔN TẬP FLASHCARD (SRS) ================= -->
+      <section v-if="activeTab === 'review'" class="space-y-6">
+        
+        <!-- Header & Filter -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-extrabold text-slate-900 flex items-center space-x-2">
+              <span>Ôn tập Flashcard thông minh (SRS)</span>
+              <span class="text-xs bg-amber-100 text-amber-800 font-bold px-2.5 py-0.5 rounded-full">Spaced Repetition</span>
+            </h2>
+            <p class="text-sm text-slate-500 mt-1">Ghi nhớ từ vựng vĩnh viễn với chu kỳ lặp lại ngắt quãng khoa học Leitner / SM-2</p>
+          </div>
+
+          <!-- Filters -->
+          <div class="flex items-center space-x-2">
+            <select 
+              v-model="flashcardFilter" 
+              @change="loadFlashcards"
+              class="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-red-500">
+              <option value="due">Cần ôn hôm nay</option>
+              <option value="all">Tất cả thẻ</option>
+              <option value="learning">Đang học</option>
+              <option value="mastered">Đã thuộc</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Flashcards Content -->
+        <div v-if="flashcards.length > 0 && currentCardIndex < flashcards.length" class="max-w-xl mx-auto space-y-6">
+          
+          <!-- Progress bar -->
+          <div class="space-y-1.5">
+            <div class="flex justify-between text-xs font-semibold text-slate-500">
+              <span>Thẻ {{ currentCardIndex + 1 }} / {{ flashcards.length }}</span>
+              <span>{{ Math.round((currentCardIndex / flashcards.length) * 100) }}% Hoàn thành</span>
+            </div>
+            <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+              <div class="bg-red-600 h-2 rounded-full transition-all duration-300" 
+                   :style="{ width: ((currentCardIndex / flashcards.length) * 100) + '%' }"></div>
+            </div>
+          </div>
+
+          <!-- 3D Flashcard Box -->
+          <div 
+            @click="isCardFlipped = !isCardFlipped" 
+            class="perspective-1000 cursor-pointer min-h-[380px]">
+            <div 
+              class="w-full h-full relative transform-style-3d transition-transform duration-500 rounded-3xl shadow-xl border border-slate-200"
+              :class="{ 'rotate-y-180': isCardFlipped }">
+              
+              <!-- Front Side -->
+              <div class="w-full h-full min-h-[380px] bg-white rounded-3xl p-8 flex flex-col justify-between items-center text-center backface-hidden absolute inset-0">
+                <div class="w-full flex justify-between items-center">
+                  <span class="text-xs px-2.5 py-1 rounded font-bold uppercase" :class="hskBadgeClass(currentCard.hsk_level)">
+                    HSK {{ currentCard.hsk_level }}
+                  </span>
+                  <span class="text-xs text-slate-400 font-medium">Bấm vào thẻ để lật</span>
+                </div>
+
+                <div class="my-auto space-y-4">
+                  <div class="font-chinese text-8xl font-black text-slate-900 tracking-wider">
+                    {{ currentCard.simplified }}
+                  </div>
+                  <button 
+                    @click.stop="speak(currentCard.simplified)"
+                    class="w-12 h-12 rounded-full bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center mx-auto shadow-sm">
+                    <i class="fa-solid fa-volume-high text-lg"></i>
+                  </button>
+                </div>
+
+                <div class="text-xs text-slate-400 font-medium">
+                  Số nét: {{ currentCard.stroke_count }} • Bộ: {{ currentCard.radical || '—' }}
+                </div>
+              </div>
+
+              <!-- Back Side -->
+              <div class="w-full h-full min-h-[380px] bg-gradient-to-b from-slate-900 to-slate-800 text-white rounded-3xl p-8 flex flex-col justify-between items-center text-center backface-hidden rotate-y-180 absolute inset-0">
+                <div class="w-full flex justify-between items-center">
+                  <span class="text-xs bg-white/20 text-white px-2.5 py-1 rounded font-bold uppercase">
+                    HSK {{ currentCard.hsk_level }}
+                  </span>
+                  <span class="text-amber-400 text-xs font-bold bg-amber-400/10 px-2 py-0.5 rounded">
+                    Hán Việt: {{ currentCard.hanviet }}
+                  </span>
+                </div>
+
+                <div class="my-auto space-y-3">
+                  <div class="font-chinese text-5xl font-black text-white">
+                    {{ currentCard.simplified }}
+                  </div>
+                  <div class="text-2xl font-bold text-red-400">
+                    {{ currentCard.pinyin }}
+                  </div>
+                  <div class="text-lg font-medium text-slate-200 max-w-sm">
+                    {{ currentCard.meaning }}
+                  </div>
+                </div>
+
+                <div class="text-xs text-slate-400">
+                  Lần ôn tiếp theo tùy thuộc vào đánh giá bên dưới
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Evaluation Buttons (Chấm điểm mức độ nhớ SRS) -->
+          <div v-if="isCardFlipped" class="grid grid-cols-4 gap-2 pt-2 animate-fade-in">
+            <button 
+              @click="rateFlashcard(1)"
+              class="p-3 bg-red-100 hover:bg-red-200 text-red-700 font-semibold rounded-2xl text-xs sm:text-sm text-center transition-all">
+              <span class="block text-base">🔴</span>
+              <span class="font-bold">Quên</span>
+              <span class="text-[10px] block opacity-75">Ôn ngay</span>
+            </button>
+
+            <button 
+              @click="rateFlashcard(2)"
+              class="p-3 bg-amber-100 hover:bg-amber-200 text-amber-800 font-semibold rounded-2xl text-xs sm:text-sm text-center transition-all">
+              <span class="block text-base">🟡</span>
+              <span class="font-bold">Khó</span>
+              <span class="text-[10px] block opacity-75">+1 ngày</span>
+            </button>
+
+            <button 
+              @click="rateFlashcard(3)"
+              class="p-3 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-semibold rounded-2xl text-xs sm:text-sm text-center transition-all">
+              <span class="block text-base">🟢</span>
+              <span class="font-bold">Nhớ tốt</span>
+              <span class="text-[10px] block opacity-75">+3 ngày</span>
+            </button>
+
+            <button 
+              @click="rateFlashcard(4)"
+              class="p-3 bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-semibold rounded-2xl text-xs sm:text-sm text-center transition-all">
+              <span class="block text-base">🟣</span>
+              <span class="font-bold">Rất dễ</span>
+              <span class="text-[10px] block opacity-75">+7 ngày</span>
+            </button>
+          </div>
+          <div v-else class="text-center">
+            <button 
+              @click="isCardFlipped = true"
+              class="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-2xl text-sm transition-all shadow-md">
+              Lật thẻ xem đáp án
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Finished Flashcards -->
+        <div v-else-if="flashcards.length > 0 && currentCardIndex >= flashcards.length" class="max-w-md mx-auto text-center py-12 bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
+          <div class="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-4">
+            🎉
+          </div>
+          <h3 class="text-xl font-bold text-slate-900 mb-2">Chúc mừng bạn đã hoàn thành phiên ôn tập!</h3>
+          <p class="text-slate-500 text-sm mb-6">Bạn đã xem hết tất cả các thẻ cần ôn hôm nay. Hãy tiếp tục duy trì thói quen mỗi ngày nhé!</p>
+          <div class="flex space-x-3 justify-center">
+            <button 
+              @click="currentCardIndex = 0; isCardFlipped = false; loadFlashcards()"
+              class="px-5 py-2.5 bg-red-600 text-white font-semibold rounded-xl text-sm shadow-md hover:bg-red-700">
+              Ôn lại từ đầu
+            </button>
+            <button 
+              @click="activeTab = 'quiz'; loadQuizzes()"
+              class="px-5 py-2.5 bg-slate-100 text-slate-700 font-semibold rounded-xl text-sm hover:bg-slate-200">
+              Làm bài tập kiểm tra
+            </button>
+          </div>
+        </div>
+
+        <!-- No Flashcards Empty State -->
+        <div v-else class="text-center py-16 bg-white rounded-3xl border border-slate-200 p-8 max-w-md mx-auto">
+          <div class="text-5xl mb-3">📭</div>
+          <h3 class="text-lg font-bold text-slate-900 mb-1">Hiện không có thẻ nào cần ôn</h3>
+          <p class="text-sm text-slate-500 mb-6">Bạn có thể tra từ điển và bấm "Lưu vào sổ tay" để hệ thống tự động đưa từ vào chu kỳ Flashcard.</p>
+          <button 
+            @click="activeTab = 'search'" 
+            class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold shadow-md">
+            Đi tra từ vựng ngay
+          </button>
+        </div>
+
+      </section>
+
+      <!-- ================= TAB 4: LÀM BÀI TẬP & QUIZ ================= -->
+      <section v-if="activeTab === 'quiz'" class="space-y-6">
+        
+        <!-- Controls & Filter -->
+        <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-extrabold text-slate-900 flex items-center space-x-2">
+              <span>Luyện thi & Làm bài tập đa dạng</span>
+              <span class="text-xs bg-red-100 text-red-600 font-bold px-2.5 py-0.5 rounded-full">Interactive Exams</span>
+            </h2>
+            <p class="text-sm text-slate-500 mt-1">Phân loại nhiều mức độ khó và đa dạng các phần thi: Sắp xếp câu, điền từ, đúng/sai, luyện nghe</p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <!-- Difficulty Level -->
+            <select 
+              v-model="quizDifficulty" 
+              @change="loadQuizzes"
+              class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:border-red-500">
+              <option value="all">⚡ Mọi độ khó</option>
+              <option value="easy">🟢 Mức độ Dễ</option>
+              <option value="medium">🟡 Mức độ Trung bình</option>
+              <option value="hard">🔴 Mức độ Nâng cao (Khó)</option>
+            </select>
+
+            <!-- HSK Level -->
+            <select 
+              v-model="quizLevel" 
+              @change="loadQuizzes"
+              class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:border-red-500">
+              <option :value="0">Tất cả HSK</option>
+              <option :value="1">Cấp độ HSK 1</option>
+              <option :value="2">Cấp độ HSK 2</option>
+              <option :value="3">Cấp độ HSK 3</option>
+              <option :value="4">Cấp độ HSK 4</option>
+            </select>
+
+            <!-- Type / Section -->
+            <select 
+              v-model="quizType" 
+              @change="loadQuizzes"
+              class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:border-red-500">
+              <option value="all">🎯 Tất cả các phần thi</option>
+              <option value="reorder">🧩 Sắp xếp từ ghép câu</option>
+              <option value="cloze">✏️ Điền vào chỗ trống</option>
+              <option value="true_false">⚖️ Nhận định Đúng / Sai</option>
+              <option value="listening">🎧 Luyện nghe hiểu</option>
+              <option value="meaning">🔠 Nghĩa của từ</option>
+              <option value="pinyin">📝 Phiên âm Pinyin</option>
+            </select>
+
+            <button 
+              @click="loadQuizzes" 
+              class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold shadow-sm transition-all flex items-center space-x-1.5">
+              <i class="fa-solid fa-arrows-rotate"></i>
+              <span>Làm đề mới</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Quiz In Progress -->
+        <div v-if="quizzes.length > 0 && !quizCompleted" class="max-w-2xl mx-auto space-y-6">
+          
+          <!-- Progress & Score indicator -->
+          <div class="flex items-center justify-between">
+            <div class="text-sm font-bold text-slate-700">
+              Câu hỏi <span class="text-red-600 font-extrabold text-base">{{ currentQuizIndex + 1 }}</span> / {{ quizzes.length }}
+            </div>
+            <div class="flex items-center space-x-2">
+              <span class="text-xs px-2.5 py-0.5 rounded-full font-bold uppercase"
+                    :class="currentQuiz.difficulty === 'hard' ? 'bg-rose-100 text-rose-700' : currentQuiz.difficulty === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'">
+                {{ formatDifficulty(currentQuiz.difficulty) }}
+              </span>
+              <div class="text-sm font-semibold text-emerald-600">
+                Đúng: {{ quizScore }} câu
+              </div>
+            </div>
+          </div>
+
+          <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+            <div class="bg-red-600 h-2 rounded-full transition-all duration-300" 
+                 :style="{ width: (((currentQuizIndex + 1) / quizzes.length) * 100) + '%' }"></div>
+          </div>
+
+          <!-- Question Card -->
+          <div class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
+            
+            <!-- Question Header -->
+            <div class="space-y-3">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-red-600 bg-red-50 px-3 py-1 rounded-full">
+                  {{ formatQuizType(currentQuiz.type) }}
+                </span>
+                <span v-if="currentQuiz.level" class="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                  HSK {{ currentQuiz.level }}
+                </span>
+              </div>
+
+              <h3 class="text-xl sm:text-2xl font-extrabold text-slate-900 leading-snug">
+                {{ currentQuiz.question }}
+              </h3>
+
+              <!-- Optional Target Word / Audio button for listening / standard -->
+              <div v-if="currentQuiz.target_word" class="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div class="flex items-center space-x-3">
+                  <span class="font-chinese text-2xl sm:text-3xl font-black text-slate-800">{{ currentQuiz.target_word }}</span>
+                  <span v-if="currentQuiz.pinyin_hint" class="text-sm text-red-600 font-semibold">
+                    ({{ currentQuiz.pinyin_hint }})
+                  </span>
+                </div>
+                <button 
+                  @click="speak(currentQuiz.target_word)"
+                  class="px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 font-medium text-xs flex items-center space-x-2 shadow-sm transition-all"
+                  title="Nghe phát âm">
+                  <i class="fa-solid fa-volume-high"></i>
+                  <span>Bấm nghe phát âm</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- DẠNG BÀI 1: SẮP XẾP TỪ GHÉP THÀNH CÂU (REORDER TOKENS) -->
+            <div v-if="currentQuiz.type === 'reorder'" class="space-y-4 pt-2">
+              <!-- Khu vực câu đang ghép -->
+              <div class="p-4 sm:p-5 rounded-2xl border-2 border-dashed min-h-[70px] flex flex-wrap items-center gap-2 transition-all"
+                   :class="selectedAnswerIndex !== null ? (selectedAnswerIndex === 0 ? 'bg-emerald-50 border-emerald-300' : 'bg-rose-50 border-rose-300') : 'bg-slate-50 border-slate-200'">
+                <span v-if="reorderUserTokens.length === 0" class="text-xs sm:text-sm text-slate-400 font-medium italic">
+                  Bấm vào các từ bên dưới để ghép thành câu hoàn chỉnh theo đúng ngữ pháp...
+                </span>
+                <button 
+                  v-for="(tk, tkIdx) in reorderUserTokens" 
+                  :key="'user-tk-' + tkIdx"
+                  @click="removeTokenFromReorder(tk, tkIdx)"
+                  :disabled="selectedAnswerIndex !== null"
+                  class="px-3.5 py-2 bg-red-600 text-white rounded-xl font-chinese text-base font-bold shadow-sm hover:bg-red-700 active:scale-95 transition-all flex items-center space-x-1.5">
+                  <span>{{ tk }}</span>
+                  <i v-if="selectedAnswerIndex === null" class="fa-solid fa-xmark text-xs opacity-70"></i>
+                </button>
+              </div>
+
+              <!-- Khu vực các từ để chọn -->
+              <div v-if="selectedAnswerIndex === null" class="space-y-2">
+                <span class="text-xs font-semibold text-slate-400 uppercase block">Các từ có sẵn (Bấm để chọn):</span>
+                <div class="flex flex-wrap items-center gap-2">
+                  <button 
+                    v-for="(avail, aIdx) in reorderAvailableTokens" 
+                    :key="'avail-tk-' + aIdx"
+                    @click="addTokenToReorder(avail, aIdx)"
+                    class="px-4 py-2.5 bg-white border-2 border-slate-200 hover:border-red-400 hover:bg-red-50/50 rounded-xl font-chinese text-base font-bold text-slate-800 shadow-2xs hover:scale-105 active:scale-95 transition-all">
+                    {{ avail }}
+                  </button>
+                </div>
+                
+                <div class="pt-2 flex justify-end">
+                  <button 
+                    @click="submitReorderAnswer"
+                    :disabled="reorderUserTokens.length === 0"
+                    class="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white font-semibold rounded-xl text-sm shadow-md transition-all">
+                    Xác nhận nộp câu ghép
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- DẠNG BÀI 2: NHẬN ĐỊNH ĐÚNG / SAI (TRUE / FALSE) -->
+            <div v-else-if="currentQuiz.type === 'true_false'" class="grid grid-cols-2 gap-4 pt-2">
+              <button 
+                @click="submitQuizAnswer(0)"
+                :disabled="selectedAnswerIndex !== null"
+                class="p-5 rounded-2xl border-2 text-center font-bold text-base sm:text-lg transition-all flex flex-col items-center justify-center space-y-2 shadow-2xs"
+                :class="getOptionButtonClass(0)">
+                <span class="text-3xl">✅</span>
+                <span>ĐÚNG (正确)</span>
+              </button>
+
+              <button 
+                @click="submitQuizAnswer(1)"
+                :disabled="selectedAnswerIndex !== null"
+                class="p-5 rounded-2xl border-2 text-center font-bold text-base sm:text-lg transition-all flex flex-col items-center justify-center space-y-2 shadow-2xs"
+                :class="getOptionButtonClass(1)">
+                <span class="text-3xl">❌</span>
+                <span>SAI (错误)</span>
+              </button>
+            </div>
+
+            <!-- DẠNG BÀI 3: TRẮC NGHIỆM CHỌN ĐÁP ÁN (CLOZE, LISTENING, MEANING, PINYIN) -->
+            <div v-else class="space-y-3 pt-2">
+              <button 
+                v-for="(opt, optIdx) in currentQuiz.options" 
+                :key="optIdx"
+                @click="submitQuizAnswer(optIdx)"
+                :disabled="selectedAnswerIndex !== null"
+                class="w-full p-4 rounded-2xl border text-left font-medium transition-all flex items-center justify-between"
+                :class="getOptionButtonClass(optIdx)">
+                <div class="flex items-center space-x-3">
+                  <span class="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm"
+                        :class="getOptionBadgeClass(optIdx)">
+                    {{ ['A', 'B', 'C', 'D'][optIdx] }}
+                  </span>
+                  <span class="text-base font-chinese">{{ opt }}</span>
+                </div>
+                
+                <div v-if="selectedAnswerIndex !== null">
+                  <i v-if="optIdx === currentQuiz.correct_index" class="fa-solid fa-circle-check text-emerald-600 text-lg"></i>
+                  <i v-else-if="optIdx === selectedAnswerIndex" class="fa-solid fa-circle-xmark text-red-600 text-lg"></i>
+                </div>
+              </button>
+            </div>
+
+            <!-- Explanation & Next Button (Shows after user answered) -->
+            <div v-if="selectedAnswerIndex !== null" class="mt-6 pt-6 border-t border-slate-100 space-y-4 animate-fade-in">
+              <div class="p-4 rounded-2xl text-sm"
+                   :class="(currentQuiz.type === 'reorder' ? selectedAnswerIndex === 0 : selectedAnswerIndex === currentQuiz.correct_index) ? 'bg-emerald-50 text-emerald-900 border border-emerald-200' : 'bg-rose-50 text-rose-900 border border-rose-200'">
+                <div class="font-bold flex items-center space-x-1.5 mb-1">
+                  <i :class="(currentQuiz.type === 'reorder' ? selectedAnswerIndex === 0 : selectedAnswerIndex === currentQuiz.correct_index) ? 'fa-solid fa-circle-check text-emerald-600' : 'fa-solid fa-triangle-exclamation text-rose-600'"></i>
+                  <span>{{ (currentQuiz.type === 'reorder' ? selectedAnswerIndex === 0 : selectedAnswerIndex === currentQuiz.correct_index) ? 'Chính xác!' : 'Chưa chính xác!' }}</span>
+                </div>
+                <p>{{ currentQuiz.explanation || 'Không có giải thích chi tiết.' }}</p>
+                <div v-if="currentQuiz.extra_data && currentQuiz.extra_data.full_sentence" class="mt-2 text-xs font-chinese font-bold text-slate-800">
+                  Câu đúng chuẩn: {{ currentQuiz.extra_data.full_sentence }}
+                </div>
+              </div>
+
+              <div class="flex justify-end">
+                <button 
+                  @click="nextQuiz"
+                  class="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-sm shadow-md transition-all flex items-center space-x-2">
+                  <span>{{ currentQuizIndex + 1 === quizzes.length ? 'Xem kết quả bài tập' : 'Câu tiếp theo' }}</span>
+                  <i class="fa-solid fa-arrow-right"></i>
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- Quiz Completed Results Screen -->
+        <div v-else-if="quizCompleted" class="max-w-xl mx-auto bg-white rounded-3xl border border-slate-200 p-8 shadow-sm text-center space-y-6">
+          <div class="w-24 h-24 rounded-full flex items-center justify-center text-5xl mx-auto shadow-inner"
+               :class="quizScore / quizzes.length >= 0.8 ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'">
+            {{ quizScore / quizzes.length >= 0.8 ? '🏆' : '📚' }}
+          </div>
+
+          <div>
+            <h3 class="text-2xl font-black text-slate-900">
+              {{ quizScore / quizzes.length >= 0.8 ? 'Kết quả xuất sắc!' : 'Hoàn thành bài tập!' }}
+            </h3>
+            <p class="text-slate-500 text-sm mt-1">Đề thi HSK {{ quizLevel }} - {{ formatQuizType(quizType) }}</p>
+          </div>
+
+          <!-- Score Card -->
+          <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex items-center justify-around">
+            <div>
+              <span class="text-xs text-slate-400 font-semibold uppercase block">Điểm số</span>
+              <span class="text-3xl font-extrabold text-slate-900">{{ quizScore }} / {{ quizzes.length }}</span>
+            </div>
+            <div class="w-px h-10 bg-slate-200"></div>
+            <div>
+              <span class="text-xs text-slate-400 font-semibold uppercase block">Tỷ lệ chính xác</span>
+              <span class="text-3xl font-extrabold text-red-600">
+                {{ Math.round((quizScore / quizzes.length) * 100) }}%
+              </span>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <button 
+              @click="loadQuizzes"
+              class="w-full sm:w-auto px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl text-sm shadow-md transition-all">
+              Làm đề khác
+            </button>
+            <button 
+              @click="activeTab = 'review'; loadFlashcards()"
+              class="w-full sm:w-auto px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-sm transition-all">
+              Sang phần ôn tập Flashcard
+            </button>
+          </div>
+        </div>
+
+        <!-- No Quizzes found -->
+        <div v-else class="text-center py-16 bg-white rounded-3xl border border-slate-200 p-8 max-w-md mx-auto">
+          <div class="text-4xl mb-2">❓</div>
+          <h3 class="text-lg font-bold text-slate-900">Đang tải ngân hàng câu hỏi...</h3>
+        </div>
+
+      </section>
+
+      <!-- ================= TAB 5: SỔ TAY TỪ VỰNG ================= -->
+      <section v-if="activeTab === 'notebook'" class="space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-extrabold text-slate-900 flex items-center space-x-2">
+              <span>Sổ tay từ vựng của tôi</span>
+              <span class="text-xs bg-red-100 text-red-600 font-bold px-2 py-0.5 rounded-full">{{ notebookItems.length }} từ</span>
+            </h2>
+            <p class="text-sm text-slate-500 mt-1">Danh sách các từ vựng bạn đã đánh dấu sao để ôn tập hàng ngày</p>
+          </div>
+
+          <div class="flex items-center space-x-2">
+            <button 
+              @click="activeTab = 'review'; loadFlashcards()"
+              class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold shadow-md flex items-center space-x-2">
+              <i class="fa-solid fa-layer-group"></i>
+              <span>Bắt đầu ôn các từ này</span>
+            </button>
+          </div>
+        </div>
+
+        <div v-if="notebookItems.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div 
+            v-for="item in notebookItems" 
+            :key="item.id"
+            class="bg-white p-5 rounded-2xl border border-slate-200 hover:border-red-300 hover:shadow-md transition-all flex flex-col justify-between">
+            <div>
+              <div class="flex items-start justify-between">
+                <div class="flex items-baseline space-x-3">
+                  <span class="font-chinese text-3xl font-bold text-slate-900">{{ item.simplified }}</span>
+                  <span class="text-red-600 font-semibold">{{ item.pinyin }}</span>
+                </div>
+                <button 
+                  @click="removeNotebookItem(item.id)"
+                  class="text-slate-300 hover:text-red-500 p-1"
+                  title="Xóa khỏi sổ tay">
+                  <i class="fa-solid fa-trash-can text-sm"></i>
+                </button>
+              </div>
+
+              <div class="mt-2 text-xs font-semibold text-amber-700 bg-amber-50 inline-block px-2 py-0.5 rounded">
+                Âm Hán Việt: {{ item.hanviet }}
+              </div>
+              <p class="mt-2 text-sm text-slate-600 line-clamp-2">{{ item.meaning }}</p>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+              <button 
+                @click="speak(item.simplified)"
+                class="text-xs text-slate-500 hover:text-red-600 flex items-center space-x-1">
+                <i class="fa-solid fa-volume-high"></i>
+                <span>Nghe</span>
+              </button>
+              <button 
+                @click="openStrokeTab(item.simplified)"
+                class="text-xs text-red-600 font-semibold hover:underline flex items-center space-x-1">
+                <i class="fa-solid fa-pen-nib"></i>
+                <span>Tập viết</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div v-else class="text-center py-16 bg-white rounded-3xl border border-slate-200 p-8 max-w-md mx-auto">
+          <div class="text-5xl mb-3">📖</div>
+          <h3 class="text-lg font-bold text-slate-900 mb-1">Sổ tay còn trống</h3>
+          <p class="text-sm text-slate-500 mb-6">Khi tra từ điển, bạn hãy bấm vào nút "Lưu vào sổ tay" để lưu các từ cần học vào đây.</p>
+          <button 
+            @click="activeTab = 'search'" 
+            class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold shadow-md">
+            Đi tra từ điển
+          </button>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Global Toast Notification -->
+    <div 
+      v-if="toastMessage" 
+      class="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center space-x-3 text-sm font-medium border border-slate-800 animate-bounce">
+      <i class="fa-solid fa-circle-check text-emerald-400"></i>
+      <span>{{ toastMessage }}</span>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-400">
+      <div class="max-w-7xl mx-auto px-4">
+        Hanzii AI Clone - Hệ thống học tiếng Trung, tra từ điển, luyện viết nét chữ & ôn tập Flashcard SRS
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- App JavaScript Logic -->
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
